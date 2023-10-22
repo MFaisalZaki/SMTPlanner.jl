@@ -137,12 +137,15 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     plan_formula = formula(domain, problem, state, g_actions, z3ctx);
     
     # Encode the initial state.
+    @info "Encoding initial state"
     append!(plan_formula, encodeInitialState!(plan_formula.domain, plan_formula.problem, plan_formula.z3Context));
     
     # Now we need to find the proper structure to maintain our required information.
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
     
     for step in 0:upperbound
+        @info "Encoding step $(step+1)"
+        @info "Encoding actions"
         for action in plan_formula.groundedactions
             append!(plan_formula, encodeState!(step+1, fluents, plan_formula.domain, plan_formula.z3Context));
             plan_formula.step[step].actions[action.term] = encodeAction!(step, action, plan_formula);
@@ -151,12 +154,14 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
         # if step <= upperbound
             plan_formula.step[step].frame = encodeFrame!(plan_formula, step, fluents, g_actions)
         # end
+        @info "Encoding goal state"
         goalstate = encodeGoalState!(plan_formula.problem.goal, plan_formula.step[step+1].fluentsVars, plan_formula.z3Context)
         z3goalstate = Z3.and(Z3.ExprVector(plan_formula.z3Context, [var for (f, var) in goalstate]))
+        @info "Solving the formula"
         plan_formula.solver = solve(plan_formula, z3goalstate)
-        !isnothing(plan_formula.solver) ? (println("Found solution at $(step+1)"), return plan_formula) : nothing
+        !isnothing(plan_formula.solver) ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
     end
-    println("No solution found in $(upperbound) steps.")
+    @info "No solution found in $(upperbound) steps."
     return plan_formula
 end
 

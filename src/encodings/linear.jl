@@ -160,7 +160,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     return plan_formula
 end
 
-function solve(_formula::Formula, goalstate::Z3.ExprAllocated)
+function solve(_formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing})
     
     solver = Solver(_formula.z3Context);
 
@@ -186,7 +186,7 @@ function solve(_formula::Formula, goalstate::Z3.ExprAllocated)
     end
 
     # Add goal state
-    add(solver, goalstate)
+    isnothing(goalstate) ? nothing : add(solver, goalstate)
 
     # Now add the initial state.
     for (f, v) in _formula.step[0].fluentsVars

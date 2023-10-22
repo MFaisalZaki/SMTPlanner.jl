@@ -27,4 +27,6 @@ export solve, extractPlan
 
 export encodeInitialState!, encodeGoalState!, encodeState!, encodeAction!, encodeFrame!
 
+export get_decls, dump, z3LogicalOperations, z3ArithmeticOperation, z3Type2VarFunction, z3Type2ValFunction, Z3.check, Z3.get_model
+
 end # module SMTPlanner

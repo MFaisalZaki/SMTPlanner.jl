@@ -44,3 +44,11 @@ function dump(s::Z3.SolverAllocated, name::String)
         end
     end
 end
+
+function Z3.check(_f::Formula)
+    return Z3.check(_f.solver)
+end
+
+function Z3.get_model(_f::Formula)
+    return Z3.get_model(_f.solver)
+end

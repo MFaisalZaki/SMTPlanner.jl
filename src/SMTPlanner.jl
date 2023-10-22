@@ -25,4 +25,6 @@ export Formulastep, Formula, formulastep, formula
 
 export solve, extractPlan
 
+export encodeInitialState!, encodeGoalState!, encodeState!, encodeAction!, encodeFrame!
+
 end # module SMTPlanner

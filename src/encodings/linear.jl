@@ -134,7 +134,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     g_actions = groundActions(domain, state);
     
     z3ctx = Context();
-    plan_formula = formula(domain, problem, state, z3ctx);
+    plan_formula = formula(domain, problem, state, g_actions, z3ctx);
     
     # Encode the initial state.
     append!(plan_formula, encodeInitialState!(plan_formula.domain, plan_formula.problem, plan_formula.z3Context));
@@ -143,7 +143,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
     
     for step in 0:upperbound
-        for action in g_actions
+        for action in plan_formula.groundedactions
             append!(plan_formula, encodeState!(step+1, fluents, plan_formula.domain, plan_formula.z3Context));
             plan_formula.step[step].actions[action.term] = encodeAction!(step, action, plan_formula);
         end

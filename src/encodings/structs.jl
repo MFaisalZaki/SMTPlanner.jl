@@ -6,7 +6,6 @@ struct ActionFormula
     effects::Dict{Term,Z3.ExprAllocated}
 end
 
-# Do we need to have this mutable?!
 mutable struct Formulastep
     step::Int64
     fluentsVars::Dict{Term, Z3.ExprAllocated}
@@ -20,6 +19,7 @@ mutable struct Formula
     domain::Domain
     problem::Problem
     initialstate::GenericState
+    groundedactions::Vector{GroundAction}
     z3Context::Z3.ContextAllocated
     step::Dict{Int64, Formulastep}
     solver::Union{Z3.SolverAllocated, Nothing}
@@ -37,7 +37,7 @@ function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, flu
     Formulastep(step, fluentsVars, fluentsVals, actions, nothing, nothing)
 end    
 
-function formula(domain::Domain, problem::Problem, state::GenericState, _ctx::Z3.ContextAllocated)
-    Formula(domain, problem, state, _ctx, Dict{Int64, Formulastep}(), nothing)
+function formula(domain::Domain, problem::Problem, state::GenericState, gactions::Vector{GroundAction}, _ctx::Z3.ContextAllocated)
+    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing)
 end
 

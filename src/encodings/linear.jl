@@ -138,7 +138,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     
     
     # Encode the initial state.
-    @info "Encoding initial state"
+    @debug "Encoding initial state"
     append!(plan_formula, encodeInitialState!(plan_formula.domain, plan_formula.problem, plan_formula.z3Context));
     
     # Now we need to find the proper structure to maintain our required information.
@@ -146,19 +146,17 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     solver = Solver(plan_formula.z3Context);
     for step in 0:upperbound
         @info "Encoding step $(step+1)"
-        @info "Encoding actions"
+        @debug "Encoding actions"
         for action in plan_formula.groundedactions
             append!(plan_formula, encodeState!(step+1, fluents, plan_formula.domain, plan_formula.z3Context));
             plan_formula.step[step].actions[action.term] = encodeAction!(step, action, plan_formula);
         end
         plan_formula.step[step].atmostConstraint = Z3.atmost(Z3.ExprVector(plan_formula.z3Context, [a.second.z3Var for a in plan_formula.step[step].actions]), 1)
-        # if step <= upperbound
-            plan_formula.step[step].frame = encodeFrame!(plan_formula, step, fluents, g_actions)
-        # end
-        @info "Encoding goal state"
+        plan_formula.step[step].frame = encodeFrame!(plan_formula, step, fluents, g_actions)
+        @debug "Encoding goal state"
         goalstate = encodeGoalState!(plan_formula.problem.goal, plan_formula.step[step+1].fluentsVars, plan_formula.z3Context)
         z3goalstate = Z3.and(Z3.ExprVector(plan_formula.z3Context, [var for (f, var) in goalstate]))
-        @info "Solving the formula"
+        @debug "Solving the formula"
         plan_formula.solver = solve!(solver, step, plan_formula, z3goalstate)
         !isnothing(plan_formula.solver) ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
     end
@@ -167,8 +165,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
 end
 
 function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing})
-    
-
+   
     # Now add the initial state.
     for (f, v) in _formula.step[0].fluentsVars
         _type = Symbol(typeof(_formula.step[0].fluentsValues[f]))
@@ -178,29 +175,26 @@ function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goal
 
     # Now add the steps formulas.
     # for step in 0:length(_formula)
-        for (f, action) in _formula.step[step].actions
-            # Add the actions preconditions
-            for actionpre in [Z3.implies(action.z3Var, precondition) for (c, precondition) in action.preconditions]
-                add(solver, actionpre)
-            end
-            # Add the actions effects
-            for actioneff in [Z3.implies(action.z3Var, effect) for (c, effect) in action.effects]
-                add(solver, actioneff)
-            end
-            # Add the frame axioms
-            for frame in _formula.step[step].frame
-                add(solver, frame)
-            end
+    for (f, action) in _formula.step[step].actions
+        # Add the actions preconditions
+        for actionpre in [Z3.implies(action.z3Var, precondition) for (c, precondition) in action.preconditions]
+            add(solver, actionpre)
         end
-        if !isnothing(_formula.step[step].atmostConstraint)
-            add(solver, _formula.step[step].atmostConstraint)
+        # Add the actions effects
+        for actioneff in [Z3.implies(action.z3Var, effect) for (c, effect) in action.effects]
+            add(solver, actioneff)
         end
-    # end
+        # Add the frame axioms
+        for frame in _formula.step[step].frame
+            add(solver, frame)
+        end
+    end
+    
+    !isnothing(_formula.step[step].atmostConstraint) ? add(solver, _formula.step[step].atmostConstraint) : nothing
 
     # Add goal state
     push(solver)
     isnothing(goalstate) ? nothing : add(solver, goalstate)
-
 
     return check(solver) == Z3.sat ? (solver) : ( pop(solver,1), return nothing)
 end

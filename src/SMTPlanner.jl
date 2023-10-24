@@ -24,7 +24,7 @@ include("encodings/linear.jl")
 
 export Formulastep, Formula, formulastep, formula
 
-export solve, extractPlan
+export solve, solve!, extractPlan
 
 export encodeInitialState!, encodeGoalState!, encodeState!, encodeAction!, encodeFrame!
 

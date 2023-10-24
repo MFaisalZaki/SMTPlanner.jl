@@ -10,6 +10,7 @@ using PDDL: flatten_conjs
 using DocStringExtensions
 using Random, Logging
 
+using CxxWrap
 using PDDL
 using Z3
 

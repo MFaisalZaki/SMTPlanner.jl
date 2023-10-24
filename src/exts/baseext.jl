@@ -21,3 +21,12 @@ end
 function Base.length(_formula::Formula)
     return maximum(collect(keys(_formula.step)))
 end
+
+function Base.convert(::Type{Float64}, num::Union{CxxWrap.StdLib.StdStringAllocated})
+    return parse(Float64, string(num))
+end
+
+function Base.string(num::Union{CxxWrap.StdLib.StdStringAllocated})
+    numstr = reinterpret(UInt8, [num[i] for i in 1:length(num)]) |> String
+    return [x for x in numstr if x != '?'] |> String
+end

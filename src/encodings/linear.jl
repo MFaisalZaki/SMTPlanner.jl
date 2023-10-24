@@ -136,13 +136,14 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     z3ctx = Context();
     plan_formula = formula(domain, problem, state, g_actions, z3ctx);
     
+    
     # Encode the initial state.
     @info "Encoding initial state"
     append!(plan_formula, encodeInitialState!(plan_formula.domain, plan_formula.problem, plan_formula.z3Context));
     
     # Now we need to find the proper structure to maintain our required information.
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
-    
+    solver = Solver(plan_formula.z3Context);
     for step in 0:upperbound
         @info "Encoding step $(step+1)"
         @info "Encoding actions"
@@ -158,19 +159,25 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
         goalstate = encodeGoalState!(plan_formula.problem.goal, plan_formula.step[step+1].fluentsVars, plan_formula.z3Context)
         z3goalstate = Z3.and(Z3.ExprVector(plan_formula.z3Context, [var for (f, var) in goalstate]))
         @info "Solving the formula"
-        plan_formula.solver = solve(plan_formula, z3goalstate)
+        plan_formula.solver = solve!(solver, step, plan_formula, z3goalstate)
         !isnothing(plan_formula.solver) ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
     end
     @info "No solution found in $(upperbound) steps."
     return plan_formula
 end
 
-function solve(_formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing})
+function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing})
     
-    solver = Solver(_formula.z3Context);
+
+    # Now add the initial state.
+    for (f, v) in _formula.step[0].fluentsVars
+        _type = Symbol(typeof(_formula.step[0].fluentsValues[f]))
+        z3val = z3Type2ValFunction[_type](_formula.z3Context, _formula.step[0].fluentsValues[f])
+        add(solver, v == z3val)
+    end    
 
     # Now add the steps formulas.
-    for step in 0:length(_formula)
+    # for step in 0:length(_formula)
         for (f, action) in _formula.step[step].actions
             # Add the actions preconditions
             for actionpre in [Z3.implies(action.z3Var, precondition) for (c, precondition) in action.preconditions]
@@ -188,17 +195,12 @@ function solve(_formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing})
         if !isnothing(_formula.step[step].atmostConstraint)
             add(solver, _formula.step[step].atmostConstraint)
         end
-    end
+    # end
 
     # Add goal state
+    push(solver)
     isnothing(goalstate) ? nothing : add(solver, goalstate)
 
-    # Now add the initial state.
-    for (f, v) in _formula.step[0].fluentsVars
-        _type = Symbol(typeof(_formula.step[0].fluentsValues[f]))
-        z3val = z3Type2ValFunction[_type](_formula.z3Context, _formula.step[0].fluentsValues[f])
-        add(solver, v == z3val)
-    end
 
-    return check(solver) == Z3.sat ? solver : nothing
+    return check(solver) == Z3.sat ? (solver) : ( pop(solver,1), return nothing)
 end

@@ -223,16 +223,18 @@ function extractPlan(planformula::Formula)
     isnothing(planformula.solver) && return Term[]
     model = get_model(planformula.solver);
     plan = Term[]
+    z3actions = Z3.ExprAllocated[]
     for step in 0:length(planformula)
         _formula_at_step = planformula.step[step];
         for (action, z3action) in _formula_at_step.actions
             if Z3.is_true(Z3.eval(model, z3action.z3Var))
                 push!(plan, action)
+                push!(z3actions, z3action.z3Var)
                 break
             end
         end
     end
     # Now validate the plan
     end_state = PDDL.simulate(EndStateSimulator(), planformula.domain, planformula.initialstate, plan);
-    return satisfy(planformula.domain, end_state, planformula.problem.goal) ? plan : Term[]
+    return satisfy(planformula.domain, end_state, planformula.problem.goal) ? (plan, z3actions) : (Term[], Z3.ExprAllocated[])
 end

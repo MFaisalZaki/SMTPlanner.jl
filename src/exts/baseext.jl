@@ -30,3 +30,7 @@ function Base.string(num::Union{CxxWrap.StdLib.StdStringAllocated})
     numstr = reinterpret(UInt8, [num[i] for i in 1:length(num)]) |> String
     return [x for x in numstr if x != '?'] |> String
 end
+
+function Base.string(x::Vector{Term})
+    return join([string(y) for y in x], "->")
+end

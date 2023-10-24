@@ -128,6 +128,21 @@ function encodeFrame!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g
     return frame
 end
 
+function encodestep!(step::Int64, _formula::Formula, fluents::Vector{Term})
+    @info "Encoding step $(step+1)"
+    @debug "Encoding actions"
+    for action in _formula.groundedactions
+        append!(_formula, encodeState!(step+1, fluents, _formula.domain, _formula.z3Context));
+        _formula.step[step].actions[action.term] = encodeAction!(step, action, _formula);
+    end
+    _formula.step[step].atmostConstraint = Z3.atmost(Z3.ExprVector(_formula.z3Context, [a.second.z3Var for a in _formula.step[step].actions]), 1)
+    _formula.step[step].frame = encodeFrame!(_formula, step, fluents, _formula.groundedactions)
+    @debug "Encoding goal state"
+    goalstate = encodeGoalState!(_formula.problem.goal, _formula.step[step+1].fluentsVars, _formula.z3Context)
+    z3goalstate = Z3.and(Z3.ExprVector(_formula.z3Context, [var for (f, var) in goalstate]))
+    return z3goalstate
+end
+
 function solve(domain::Domain, problem::Problem, upperbound::Int)
     state = initstate(domain, problem);
     fluents = groundfluents(domain, state);
@@ -135,7 +150,6 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     
     z3ctx = Context();
     plan_formula = formula(domain, problem, state, g_actions, z3ctx);
-    
     
     # Encode the initial state.
     @debug "Encoding initial state"
@@ -145,17 +159,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
     solver = Solver(plan_formula.z3Context);
     for step in 0:upperbound
-        @info "Encoding step $(step+1)"
-        @debug "Encoding actions"
-        for action in plan_formula.groundedactions
-            append!(plan_formula, encodeState!(step+1, fluents, plan_formula.domain, plan_formula.z3Context));
-            plan_formula.step[step].actions[action.term] = encodeAction!(step, action, plan_formula);
-        end
-        plan_formula.step[step].atmostConstraint = Z3.atmost(Z3.ExprVector(plan_formula.z3Context, [a.second.z3Var for a in plan_formula.step[step].actions]), 1)
-        plan_formula.step[step].frame = encodeFrame!(plan_formula, step, fluents, g_actions)
-        @debug "Encoding goal state"
-        goalstate = encodeGoalState!(plan_formula.problem.goal, plan_formula.step[step+1].fluentsVars, plan_formula.z3Context)
-        z3goalstate = Z3.and(Z3.ExprVector(plan_formula.z3Context, [var for (f, var) in goalstate]))
+        z3goalstate = encodestep!(step, plan_formula, fluents)
         @debug "Solving the formula"
         plan_formula.solver = solve!(solver, step, plan_formula, z3goalstate)
         !isnothing(plan_formula.solver) ? (@info "Found solution at $(step+1)", return plan_formula) : nothing

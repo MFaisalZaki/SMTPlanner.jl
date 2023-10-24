@@ -26,7 +26,7 @@ export Formulastep, Formula, formulastep, formula
 
 export solve, solve!, extractPlan
 
-export encodeInitialState!, encodeGoalState!, encodeState!, encodeAction!, encodeFrame!
+export encodeInitialState!, encodeGoalState!, encodeState!, encodeAction!, encodeFrame!, encodestep!
 
 export get_decls, dump, z3LogicalOperations, z3ArithmeticOperation, z3Type2VarFunction, z3Type2ValFunction, check, get_model
 

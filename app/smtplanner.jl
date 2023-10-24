@@ -16,3 +16,4 @@ roverproblem = load_problem(IPCInstancesRepo, "ipc-2002-rovers-strips-automatic"
 _solutionformula = solve(roverdomain, roverproblem, 100);
 plan1, z3actins = extractPlan(_solutionformula);
 @assert length(plan1) > 0
+

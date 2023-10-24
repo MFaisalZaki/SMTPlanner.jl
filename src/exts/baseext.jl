@@ -34,3 +34,11 @@ end
 function Base.string(x::Vector{Term})
     return join([string(y) for y in x], "->")
 end
+
+function Base.write(io::IO, plan::Vector{Term})
+    # Frist we need to reshape the plan into the sas format.
+    actions = ["("*Base.replace(string(action), "("=>" " ) for action in plan]
+    for action in actions
+        write(io, action*"\n")
+    end
+end

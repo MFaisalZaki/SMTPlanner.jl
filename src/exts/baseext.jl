@@ -36,7 +36,7 @@ function Base.string(x::Vector{Term})
 end
 
 function Base.write(io::IO, plan::Vector{Term})
-    actions = ["("*Base.replace(string(action), "("=>" " ) for action in plan]
+    actions = ["($(Symbol(a.name)) $(join(a.args, " ")))" for a in plan]
     for action in actions
         write(io, action*"\n")
     end

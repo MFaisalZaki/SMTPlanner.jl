@@ -35,6 +35,12 @@ function Base.string(x::Vector{Term})
     return join([string(y) for y in x], "->")
 end
 
+function Base.write(io::IO, plan::Vector{Term})
+    actions = ["("*Base.replace(string(action), "("=>" " ) for action in plan]
+    for action in actions
+        write(io, action*"\n")
+    end
+end
 
 function Base.write(dir::String, planlist::Vector{Vector{Term}})
     isdir(dir) || mkdir(dir)

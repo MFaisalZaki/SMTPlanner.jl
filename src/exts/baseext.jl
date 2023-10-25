@@ -37,7 +37,7 @@ end
 
 function Base.write(io::IO, plan::Vector{Term})
     actions = ["($(Symbol(a.name)) $(join(a.args, " ")))" for a in plan]
-    append!(actions, "; plan cost $(length(plan))")
+    append!(actions, "; plan cost $(length(actions))")
     for action in actions
         write(io, action*"\n")
     end

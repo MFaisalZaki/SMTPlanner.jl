@@ -35,10 +35,13 @@ function Base.string(x::Vector{Term})
     return join([string(y) for y in x], "->")
 end
 
-function Base.write(io::IO, plan::Vector{Term})
-    # Frist we need to reshape the plan into the sas format.
-    actions = ["("*Base.replace(string(action), "("=>" " ) for action in plan]
-    for action in actions
-        write(io, action*"\n")
+
+function Base.write(dir::String, planlist::Vector{Vector{Term}})
+    isdir(dir) || mkdir(dir)
+    for (i, plan) in enumerate(planlist)
+        filename = "$dir/sas_plan.$i"
+        open(filename, "w") do file
+            write(file, plan)
+        end
     end
 end

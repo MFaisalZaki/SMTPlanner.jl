@@ -201,6 +201,13 @@ function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goal
     # Add goal state
     push(solver)
     isnothing(goalstate) ? nothing : add(solver, goalstate)
-
-    return check(solver) == Z3.sat ? (solver) : ( pop(solver,1), return nothing)
+    try
+        set(solver, "timeout", convert(UInt, 600000))
+        return check(solver) == Z3.sat ? (solver) : ( pop(solver,1), return nothing)
+    catch e
+        @warn "Z3 threw an exception: $(e)"
+        return nothing
+    end
 end
+
+

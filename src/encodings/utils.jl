@@ -219,7 +219,7 @@ function collect_arithemric_expression_fluents!(expr::Union{Const,Compound}, var
 end
 
 # Now we need to extract the plan from the model.
-function extractPlan(planformula::Formula)
+function extractplan(planformula::Formula)
     isnothing(planformula.solver) && return Term[]
     model = get_model(planformula.solver);
     plan = Term[]

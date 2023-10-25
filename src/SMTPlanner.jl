@@ -24,9 +24,9 @@ include("encodings/linear.jl")
 
 export Formulastep, Formula, formulastep, formula
 
-export solve, solve!, extractPlan
+export solve, solve!, extractplan
 
-export encodeInitialState!, encodeGoalState!, encodeState!, encodeAction!, encodeFrame!, encodestep!
+export encodeInitialState!, encodeGoalState!, encodestate!, encodeaction!, encodeframe!, encodestep!, increment!
 
 export get_decls, dump, z3LogicalOperations, z3ArithmeticOperation, z3Type2VarFunction, z3Type2ValFunction, check, get_model
 

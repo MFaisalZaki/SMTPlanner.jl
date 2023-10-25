@@ -1,5 +1,5 @@
 
-function encodeState!(step::Int, fluentslist::Vector{Term}, domain::Domain, _ctx::Z3.ContextAllocated)
+function encodestate!(step::Int, fluentslist::Vector{Term}, domain::Domain, _ctx::Z3.ContextAllocated)
     statefluentsvars = Dict{Term, Z3.ExprAllocated}()
     for fluent in fluentslist
         if haskey(domain.functions, fluent.name)
@@ -19,13 +19,12 @@ function encodeState!(step::Int, fluentslist::Vector{Term}, domain::Domain, _ctx
 end
 
 
-function encodeInitialState!(domain::Domain, problem::Problem, _ctx::Z3.ContextAllocated)
-    state = initstate(domain, problem);
+function encodeInitialState!(_formula::Formula) #(domain::Domain, problem::Problem, _ctx::Z3.ContextAllocated)
+    state = initstate(_formula.domain, _formula.problem);
     # Get all the fluents in the initial state
-    fluents = groundfluents(domain, state)
-    initialstateformula = encodeState!(0, fluents, domain, _ctx)
+    initialstateformula = encodestate!(0, _formula.fluents, _formula.domain, _formula.z3Context)
     # Encode those fluents into _ctx context.
-    for fluent in fluents
+    for fluent in _formula.fluents
         initialstateformula.fluentsValues[fluent] = state[fluent]
     end
     return initialstateformula
@@ -43,13 +42,13 @@ function encodeGoalState!(goal::Compound, fluentVars::Dict{Term, Z3.ExprAllocate
     return goalstate
 end
 
-function encodeAction!(step::Int, action::GroundAction, _planformula::Formula)
-    pr = encodePreconditions!(action, _planformula.step[step].fluentsVars, _planformula.z3Context)
-    effs = encodeEffects!(action, step, _planformula)
+function encodeaction!(step::Int, action::GroundAction, _planformula::Formula)
+    pr = encodepreconditions!(action, _planformula.step[step].fluentsVars, _planformula.z3Context)
+    effs = encodeeffects!(action, step, _planformula)
     return ActionFormula(action, z3Type2VarFunction[:Bool](_planformula.z3Context, string(action, step)), pr, effs)
 end
 
-function encodePreconditions!(action::GroundAction, fluentVars::Dict{Term, Z3.ExprAllocated}, _ctx::Z3.ContextAllocated)
+function encodepreconditions!(action::GroundAction, fluentVars::Dict{Term, Z3.ExprAllocated}, _ctx::Z3.ContextAllocated)
     precondZ3 = Dict{Term, Z3.ExprAllocated}()
     for precondition in action.preconds
         if precondition.name in (:+, :-, :*, :/, :<, :>, :<=, :>=, :(==), :!=)
@@ -61,7 +60,7 @@ function encodePreconditions!(action::GroundAction, fluentVars::Dict{Term, Z3.Ex
     return precondZ3
 end
 
-function encodeEffects!(action::GroundAction, step::Int, _planformula::Formula)
+function encodeeffects!(action::GroundAction, step::Int, _planformula::Formula)
     effects = Dict{Term,Z3.ExprAllocated}()
 
     shared_add_del_eles = intersect(Set(action.effect.add), Set(action.effect.del))
@@ -84,8 +83,7 @@ function encodeEffects!(action::GroundAction, step::Int, _planformula::Formula)
     return effects
 end
 
-
-function encodeFrame!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g_actions::Vector{GroundAction})
+function encodeframe!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g_actions::Vector{GroundAction})
     frame = Z3.ExprAllocated[]
     for fluent in fluents
         _pre  = get(plan_formula.step[step].fluentsVars, fluent, nothing)
@@ -128,15 +126,19 @@ function encodeFrame!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g
     return frame
 end
 
-function encodestep!(step::Int64, _formula::Formula, fluents::Vector{Term})
+function increment!(_formula::Formula)
+    return encodestep!(length(_formula), _formula)
+end
+
+function encodestep!(step::Int64, _formula::Formula)
     @info "Encoding step $(step+1)"
     @debug "Encoding actions"
     for action in _formula.groundedactions
-        append!(_formula, encodeState!(step+1, fluents, _formula.domain, _formula.z3Context));
-        _formula.step[step].actions[action.term] = encodeAction!(step, action, _formula);
+        append!(_formula, encodestate!(step+1, _formula.fluents, _formula.domain, _formula.z3Context));
+        _formula.step[step].actions[action.term] = encodeaction!(step, action, _formula);
     end
     _formula.step[step].atmostConstraint = Z3.atmost(Z3.ExprVector(_formula.z3Context, [a.second.z3Var for a in _formula.step[step].actions]), 1)
-    _formula.step[step].frame = encodeFrame!(_formula, step, fluents, _formula.groundedactions)
+    _formula.step[step].frame = encodeframe!(_formula, step, _formula.fluents, _formula.groundedactions)
     @debug "Encoding goal state"
     goalstate = encodeGoalState!(_formula.problem.goal, _formula.step[step+1].fluentsVars, _formula.z3Context)
     z3goalstate = Z3.and(Z3.ExprVector(_formula.z3Context, [var for (f, var) in goalstate]))
@@ -149,17 +151,17 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     g_actions = groundActions(domain, state);
     
     z3ctx = Context();
-    plan_formula = formula(domain, problem, state, g_actions, z3ctx);
+    plan_formula = formula(domain, problem, state, g_actions, fluents, z3ctx);
     
     # Encode the initial state.
     @debug "Encoding initial state"
-    append!(plan_formula, encodeInitialState!(plan_formula.domain, plan_formula.problem, plan_formula.z3Context));
+    append!(plan_formula, encodeInitialState!(plan_formula)) #(plan_formula.domain, plan_formula.problem, plan_formula.z3Context));
     
     # Now we need to find the proper structure to maintain our required information.
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
     solver = Solver(plan_formula.z3Context);
     for step in 0:upperbound
-        z3goalstate = encodestep!(step, plan_formula, fluents)
+        z3goalstate = increment!(plan_formula) #encodestep!(step, plan_formula)
         @debug "Solving the formula"
         plan_formula.solver = solve!(solver, step, plan_formula, z3goalstate)
         !isnothing(plan_formula.solver) ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
@@ -193,7 +195,7 @@ function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goal
             add(solver, frame)
         end
     end
-    
+
     !isnothing(_formula.step[step].atmostConstraint) ? add(solver, _formula.step[step].atmostConstraint) : nothing
 
     # Add goal state

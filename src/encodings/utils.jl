@@ -220,7 +220,7 @@ end
 
 # Now we need to extract the plan from the model.
 function extractplan(planformula::Formula)
-    isnothing(planformula.solver) && return Term[]
+    planformula.solved || return (Term[], Z3.ExprAllocated[])
     model = get_model(planformula.solver);
     plan = Term[]
     z3actions = Z3.ExprAllocated[]

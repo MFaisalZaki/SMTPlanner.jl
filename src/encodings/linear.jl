@@ -131,7 +131,7 @@ function increment!(_formula::Formula)
 end
 
 function encodestep!(step::Int64, _formula::Formula)
-    @info "Encoding step $(step+1)"
+    @debug "Encoding step $(step+1)"
     @debug "Encoding actions"
     for action in _formula.groundedactions
         append!(_formula, encodestate!(step+1, _formula.fluents, _formula.domain, _formula.z3Context));
@@ -160,13 +160,16 @@ function solve(domain::Domain, problem::Problem, upperbound::Int, iterationtimeo
     # Now we need to find the proper structure to maintain our required information.
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
     plan_formula.solver = Solver(plan_formula.z3Context);
+    foundatstep = nothing
     for step in 0:upperbound
-        z3goalstate = increment!(plan_formula) #encodestep!(step, plan_formula)
+        foundatstep = step
+        z3goalstate = increment!(plan_formula)
         @debug "Solving the formula"
         res = solve!(step, plan_formula, z3goalstate, iterationtimeout)
-        res == Z3.sat ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
+        res == Z3.sat ? break : nothing
     end
-    @info "No solution found in $(upperbound) steps."
+    plan_formula.solved = (foundatstep < upperbound)
+    plan_formula.solved ? (@debug "found solution at setp $(step+1)") : (@debug "No solution found in $(upperbound) steps.")
     return plan_formula
 end
 

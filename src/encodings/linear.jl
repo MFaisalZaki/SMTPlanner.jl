@@ -19,7 +19,7 @@ function encodestate!(step::Int, fluentslist::Vector{Term}, domain::Domain, _ctx
 end
 
 
-function encodeInitialState!(_formula::Formula) #(domain::Domain, problem::Problem, _ctx::Z3.ContextAllocated)
+function encodeInitialState!(_formula::Formula)
     state = initstate(_formula.domain, _formula.problem);
     # Get all the fluents in the initial state
     initialstateformula = encodestate!(0, _formula.fluents, _formula.domain, _formula.z3Context)
@@ -83,9 +83,9 @@ function encodeeffects!(action::GroundAction, step::Int, _planformula::Formula)
     return effects
 end
 
-function encodeframe!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g_actions::Vector{GroundAction})
+function encodeframe!(plan_formula::Formula, step::Int)
     frame = Z3.ExprAllocated[]
-    for fluent in fluents
+    for fluent in plan_formula.fluents
         _pre  = get(plan_formula.step[step].fluentsVars, fluent, nothing)
         _post = get(plan_formula.step[step+1].fluentsVars, fluent, nothing)
         
@@ -97,7 +97,7 @@ function encodeframe!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g
             actionadd = Z3.ExprAllocated[]
             actiondel = Z3.ExprAllocated[]
             
-            for action in g_actions
+            for action in plan_formula.groundedactions
                 fluent in action.effect.add ? push!(actionadd, plan_formula.step[step].actions[action.term].z3Var) : nothing
                 fluent in action.effect.del ? push!(actiondel, plan_formula.step[step].actions[action.term].z3Var) : nothing
             end
@@ -109,7 +109,7 @@ function encodeframe!(plan_formula::Formula, step::Int, fluents::Vector{Term}, g
             push!(frame, Z3.implies(Z3.and(Z3.ExprVector(plan_formula.z3Context, [_pre, Z3.not(_post)])), Z3.or(delExprVector)))
         else
             actionnum = Z3.ExprAllocated[]
-            for action in g_actions
+            for action in plan_formula.groundedactions
                 fluentset = Set{Term}()
                 for ops in action.effect.ops
                     collect_arithemric_expression_fluents!(ops.second, plan_formula.step[0].fluentsVars, fluentset)
@@ -138,14 +138,14 @@ function encodestep!(step::Int64, _formula::Formula)
         _formula.step[step].actions[action.term] = encodeaction!(step, action, _formula);
     end
     _formula.step[step].atmostConstraint = Z3.atmost(Z3.ExprVector(_formula.z3Context, [a.second.z3Var for a in _formula.step[step].actions]), 1)
-    _formula.step[step].frame = encodeframe!(_formula, step, _formula.fluents, _formula.groundedactions)
+    _formula.step[step].frame = encodeframe!(_formula, step)
     @debug "Encoding goal state"
     goalstate = encodeGoalState!(_formula.problem.goal, _formula.step[step+1].fluentsVars, _formula.z3Context)
     z3goalstate = Z3.and(Z3.ExprVector(_formula.z3Context, [var for (f, var) in goalstate]))
     return z3goalstate
 end
 
-function solve(domain::Domain, problem::Problem, upperbound::Int)
+function solve(domain::Domain, problem::Problem, upperbound::Int, iterationtimeout::Union{Nothing,Int64} = nothing)
     state = initstate(domain, problem);
     fluents = groundfluents(domain, state);
     g_actions = groundActions(domain, state);
@@ -159,24 +159,24 @@ function solve(domain::Domain, problem::Problem, upperbound::Int)
     
     # Now we need to find the proper structure to maintain our required information.
     # The basic formula is I(s0) ^ T(si,si+1) ^ G(sn)
-    solver = Solver(plan_formula.z3Context);
+    plan_formula.solver = Solver(plan_formula.z3Context);
     for step in 0:upperbound
         z3goalstate = increment!(plan_formula) #encodestep!(step, plan_formula)
         @debug "Solving the formula"
-        plan_formula.solver = solve!(solver, step, plan_formula, z3goalstate)
-        !isnothing(plan_formula.solver) ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
+        res = solve!(step, plan_formula, z3goalstate)
+        res == Z3.sat ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
     end
     @info "No solution found in $(upperbound) steps."
     return plan_formula
 end
 
-function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing})
+function solve!(step::Int64, _formula::Formula, goalstate::Union{Z3.ExprAllocated, Nothing}, timeout::Union{Nothing, Int64} = nothing)
    
     # Now add the initial state.
     for (f, v) in _formula.step[0].fluentsVars
         _type = Symbol(typeof(_formula.step[0].fluentsValues[f]))
         z3val = z3Type2ValFunction[_type](_formula.z3Context, _formula.step[0].fluentsValues[f])
-        add(solver, v == z3val)
+        add(_formula.solver, v == z3val)
     end    
 
     # Now add the steps formulas.
@@ -184,29 +184,33 @@ function solve!(solver::Z3.SolverAllocated, step::Int64, _formula::Formula, goal
     for (f, action) in _formula.step[step].actions
         # Add the actions preconditions
         for actionpre in [Z3.implies(action.z3Var, precondition) for (c, precondition) in action.preconditions]
-            add(solver, actionpre)
+            add(_formula.solver, actionpre)
         end
         # Add the actions effects
         for actioneff in [Z3.implies(action.z3Var, effect) for (c, effect) in action.effects]
-            add(solver, actioneff)
+            add(_formula.solver, actioneff)
         end
         # Add the frame axioms
         for frame in _formula.step[step].frame
-            add(solver, frame)
+            add(_formula.solver, frame)
         end
     end
 
-    !isnothing(_formula.step[step].atmostConstraint) ? add(solver, _formula.step[step].atmostConstraint) : nothing
+    !isnothing(_formula.step[step].atmostConstraint) ? add(_formula.solver, _formula.step[step].atmostConstraint) : nothing
 
     # Add goal state
-    push(solver)
-    isnothing(goalstate) ? nothing : add(solver, goalstate)
+    push(_formula.solver)
+    isnothing(goalstate) ? nothing : add(_formula.solver, goalstate)
+    res = Z3.unsat
     try
-        set(solver, "timeout", convert(UInt, 600000))
-        return check(solver) == Z3.sat ? (solver) : ( pop(solver,1), return nothing)
+        isnothing(timeout) ? nothing : set(_formula.solver, "timeout", convert(UInt, timeout))
+        res = check(_formula.solver) 
+        res == Z3.unsat ? (pop(_formula.solver,1)) : nothing
     catch e
-        @warn "Z3 threw an exception: $(e)"
-        return nothing
+        @warn "Solver timeout"
+        pop(_formula.solver,1)
+    finally
+        return res
     end
 end
 

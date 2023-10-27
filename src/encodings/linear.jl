@@ -163,7 +163,7 @@ function solve(domain::Domain, problem::Problem, upperbound::Int, iterationtimeo
     for step in 0:upperbound
         z3goalstate = increment!(plan_formula) #encodestep!(step, plan_formula)
         @debug "Solving the formula"
-        res = solve!(step, plan_formula, z3goalstate)
+        res = solve!(step, plan_formula, z3goalstate, iterationtimeout)
         res == Z3.sat ? (@info "Found solution at $(step+1)", return plan_formula) : nothing
     end
     @info "No solution found in $(upperbound) steps."
@@ -201,17 +201,10 @@ function solve!(step::Int64, _formula::Formula, goalstate::Union{Z3.ExprAllocate
     # Add goal state
     push(_formula.solver)
     isnothing(goalstate) ? nothing : add(_formula.solver, goalstate)
-    res = Z3.unsat
-    try
-        isnothing(timeout) ? nothing : set(_formula.solver, "timeout", convert(UInt, timeout))
-        res = check(_formula.solver) 
-        res == Z3.unsat ? (pop(_formula.solver,1)) : nothing
-    catch e
-        @warn "Solver timeout"
-        pop(_formula.solver,1)
-    finally
-        return res
-    end
+    isnothing(timeout) ? nothing : set(_formula.solver, "timeout", convert(UInt, timeout))
+    res = check(_formula.solver) 
+    res == Z3.unsat ? (pop(_formula.solver,1)) : nothing
+    return res
 end
 
 

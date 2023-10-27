@@ -7,8 +7,8 @@ using SMTPlanner
 using PlanningDomains
 
 
-roverdomain  = load_domain(IPCInstancesRepo,  "ipc-2002-rovers-strips-automatic");
-roverproblem = load_problem(IPCInstancesRepo, "ipc-2002-rovers-strips-automatic", 3);
+roverdomain  = load_domain(IPCInstancesRepo,  "ipc-2002-depots-numeric-automatic");
+roverproblem = load_problem(IPCInstancesRepo, "ipc-2002-depots-numeric-automatic", 2);
 
 _solutionformula = solve(roverdomain, roverproblem, 100, 60000);
 _solutionformula.solved

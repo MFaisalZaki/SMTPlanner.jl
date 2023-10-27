@@ -4,13 +4,15 @@ z3Type2ValFunction = Dict{Symbol, Function}(:Bool  => bool_val,
                                             :Real  => real_val, 
                                             :Int   => int_val,
                                             :Int64   => int_val,
-                                            :Const => real_val)
+                                            :Const => real_val, 
+                                            Symbol("Julog.Const") => real_val)
 
 z3Type2VarFunction = Dict{Symbol, Function}(:Bool  => bool_const, 
                                             :Real  => real_const, 
                                             :Int   => int_const, 
                                             :Int64 => int_const, 
-                                            :Const => real_const)
+                                            :Const => real_const,
+                                            Symbol("Julog.Const") => real_const)
 
 z3ArithmeticOperation = Dict(
     :+    => (+),

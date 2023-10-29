@@ -1,3 +1,7 @@
+@enum EncoderMode begin
+    LINEAR = 1
+    R2E = 2
+end
 
 struct ActionFormula
     name::Compound
@@ -8,7 +12,7 @@ end
 
 mutable struct Formulastep
     step::Int64
-    fluentsVars::Dict{Term, Z3.ExprAllocated}
+    fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}
     fluentsValues::Dict{Term, Any}
     actions::Dict{Term, ActionFormula}
     atmostConstraint::Union{Z3.ExprAllocated, Nothing}
@@ -25,21 +29,27 @@ mutable struct Formula
     solver::Union{Z3.SolverAllocated, Nothing}
     fluents::Vector{Term}
     solved::Bool
+    solverpushcnt::Int64
+    formulatype::EncoderMode
 end
 
-function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated})
+function formulastep(step::Int64)
+    Formulastep(step, Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}(), Dict{Term, Z3.ExprAllocated}(), Dict{Term, ActionFormula}(), nothing, nothing)
+end
+
+function formulastep(step::Int64, fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}})
     Formulastep(step, fluentsVars, Dict{Term, Z3.ExprAllocated}(), Dict{Term, ActionFormula}(), nothing, nothing)
 end    
 
-function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, fluentsVals::Dict{Term, Z3.ExprAllocated})
+function formulastep(step::Int64, fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, fluentsVals::Dict{Term, Z3.ExprAllocated})
     Formulastep(step, fluentsVars, fluentsVals, Dict{Term, ActionFormula}(), nothing, nothing)
 end    
 
-function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, fluentsVals::Dict{Term, Z3.ExprAllocated}, actions::Dict{Term, ActionFormula})
+function formulastep(step::Int64, fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, fluentsVals::Dict{Term, Z3.ExprAllocated}, actions::Dict{Term, ActionFormula})
     Formulastep(step, fluentsVars, fluentsVals, actions, nothing, nothing)
 end    
 
-function formula(domain::Domain, problem::Problem, state::GenericState, gactions::Vector{GroundAction}, _fluents::Vector{Term}, _ctx::Z3.ContextAllocated)
-    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing, _fluents, false)
+function formula(domain::Domain, problem::Problem, state::GenericState, gactions::Vector{GroundAction}, _fluents::Vector{Term}, _ctx::Z3.ContextAllocated, _type::EncoderMode)
+    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing, _fluents, false, 0, _type)
 end
 

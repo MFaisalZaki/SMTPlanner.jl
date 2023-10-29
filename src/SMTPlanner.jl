@@ -9,6 +9,7 @@ using StatsBase: sample, Weights
 using PDDL: flatten_conjs
 using DocStringExtensions
 using Random, Logging
+using DataStructures
 
 using CxxWrap
 using PDDL
@@ -20,13 +21,16 @@ include("exts/baseext.jl")
 include("exts/z3ext.jl")
 
 include("encodings/utils.jl")
+
 include("encodings/linear.jl")
+include("encodings/r2e.jl")
+include("encodings/encoder.jl")
 
 export Formulastep, Formula, formulastep, formula
 
 export solve, solve!, extractplan
 
-export encodeInitialState!, encodeGoalState!, encodestate!, encodeaction!, encodeframe!, encodestep!, increment!
+export encodeInitialState!, encodeGoalState!, encodestatelinear!, encodeaction!, encodeframe!, encodestep!, increment!
 
 export get_decls, dump, z3LogicalOperations, z3ArithmeticOperation, z3Type2VarFunction, z3Type2ValFunction, check, get_model
 

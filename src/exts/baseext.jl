@@ -52,3 +52,17 @@ function Base.write(dir::String, planlist::Vector{Vector{Term}})
         end
     end
 end
+
+function Base.push!(f::Formula)
+    f.solverpushcnt += 1
+    push(f.solver)
+end
+
+function Base.pop!(f::Formula)
+    f.solverpushcnt -= 1
+    pop(f.solver, 1)
+end
+
+function Base.sort(actionlist::Vector{GroundAction})
+    return sort(collect(actionlist), by = x -> x.name)
+end

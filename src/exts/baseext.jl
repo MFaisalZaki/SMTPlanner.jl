@@ -59,6 +59,7 @@ function Base.push!(f::Formula)
 end
 
 function Base.pop!(f::Formula)
+    f.solverpushcnt == 0 ? (return) : nothing
     f.solverpushcnt -= 1
     pop(f.solver, 1)
 end

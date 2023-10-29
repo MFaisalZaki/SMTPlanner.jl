@@ -1,26 +1,11 @@
-function encodestate!(step::Int, fluentslist::Vector{Term}, domain::Domain, _ctx::Z3.ContextAllocated)
-    statefluentsvars = Dict{Term, Z3.ExprAllocated}()
-    for fluent in fluentslist
-        if haskey(domain.functions, fluent.name)
-            # This is a function
-            statefluentsvars[fluent] = encodeFluentVar(fluent, :Int, step, _ctx)
-        elseif haskey(domain.predicates, fluent.name)
-            # This is a predicate
-            statefluentsvars[fluent] = encodeFluentVar(fluent, :Bool, step, _ctx)
-        elseif haskey(domain.constants, fluent.name)
-            # This is a constant
-            statefluentsvars[fluent] = encodeFluentVar(fluent, :Const, step, _ctx)
-        else
-            @assert false "Fluent $(fluent) is unkown type or we are not handling it."
-        end
-    end
-    return formulastep(step, statefluentsvars)
-end
 
 function encodeInitialState!(_formula::Formula)
     state = initstate(_formula.domain, _formula.problem);
     # Get all the fluents in the initial state
-    initialstateformula = encodestate!(0, _formula.fluents, _formula.domain, _formula.z3Context)
+    initialstateformula = nothing
+    initialstateformula = isnothing(initialstateformula) && _formula.formulatype == LINEAR ? (encodestatelinear!(0, _formula)) : nothing
+    initialstateformula = isnothing(initialstateformula) && _formula.formulatype == R2E    ? (encodestater2e!(0, _formula))    : initialstateformula
+    @assert !isnothing(initialstateformula) "Initial state formula is not encoded due to unkown type."
     # Encode those fluents into _ctx context.
     for fluent in _formula.fluents
         initialstateformula.fluentsValues[fluent] = state[fluent]
@@ -36,6 +21,7 @@ function encodestep!(step::Int64, _formula::Formula)
     @debug "Encoding step $(step+1)"
     @debug "Encoding actions"
     _formula.formulatype == LINEAR ? (return encodesteplinear!(step, _formula)) : nothing
+    _formula.formulatype == R2E ?    (return encodestepr2e!(step, _formula))    : nothing
     @error "unkown formula type"
 end
 

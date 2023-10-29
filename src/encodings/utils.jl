@@ -165,20 +165,27 @@ function groundfluents(domain::Domain, state::State)
      return fluent_terms
 end
 
-function encodeFluentVar(f::Compound, type::Symbol, timestep::Int, _ctx::Z3.ContextAllocated)
+function encodefluentvar(f::Compound, type::Symbol, timestep::Int, _ctx::Z3.ContextAllocated)
     return z3Type2VarFunction[type](_ctx, string(f, timestep))
 end
 
-
-function encodeFluentVarVal(f::Compound, val::Union{Bool,Int,Float64}, timestep::Int, _ctx::Z3.ContextAllocated)
+function encodefluentvarVal(f::Compound, val::Union{Bool,Int,Float64}, timestep::Int, _ctx::Z3.ContextAllocated)
     z3val = z3Type2ValFunction[Symbol(typeof(val))](_ctx, val)
     z3var = z3Type2VarFunction[Symbol(typeof(val))](_ctx, string(f, timestep))
     return z3var, z3val
 end
 
+function getfluentz3type(domain::Domain, fluent::Term)
+    fluenttype = nothing
+    fluenttype = isnothing(fluenttype) && haskey(domain.functions, fluent.name)  ? :Int   : fluenttype
+    fluenttype = isnothing(fluenttype) && haskey(domain.predicates, fluent.name) ? :Bool  : fluenttype
+    fluenttype = isnothing(fluenttype) && haskey(domain.constants, fluent.name)  ? :Const : fluenttype
+    @assert !isnothing(fluenttype) "Fluent $(fluent) is unkown type or we are not handling it."
+    return fluenttype
+end
 
 # Define a function to traverse expressions
-function traverse_arithemric_expression(expr::Union{Const,Compound}, varslist::Dict{Term, Z3.ExprAllocated}, _ctx::Z3.ContextAllocated)
+function traverse_arithemric_expression(expr::Union{Const,Compound}, varslist::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, _ctx::Z3.ContextAllocated)
     if expr.name in (:+, :-, :*, :/, :<, :>, :<=, :>=, :(==), :!=)
         # We know that the expression in PDDL is two operands only
         loperand = traverse_arithemric_expression(expr.args[1], varslist, _ctx)
@@ -192,7 +199,7 @@ function traverse_arithemric_expression(expr::Union{Const,Compound}, varslist::D
     end
 end
 
-function traverse_boolean_expression(expr::Union{Const,Compound}, varslist::Dict{Term, Z3.ExprAllocated})
+function traverse_boolean_expression(expr::Union{Const,Compound}, varslist::Dict{Term,Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}})
     if expr.name in (:and, :or)
         # We know that the expression in PDDL is two operands only
         loperand = traverse_boolean_expression(expr.args[1], varslist)
@@ -207,7 +214,7 @@ function traverse_boolean_expression(expr::Union{Const,Compound}, varslist::Dict
     end
 end
 
-function collect_arithemric_expression_fluents!(expr::Union{Const,Compound}, varslist::Dict{Term, Z3.ExprAllocated}, retset::Set{Term})
+function collect_arithemric_expression_fluents!(expr::Union{Const,Compound}, varslist::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, retset::Set{Term})
     if expr.name in (:+, :-, :*, :/, :<, :>, :<=, :>=, :(==), :!=)
         # We know that the expression in PDDL is two operands only
         collect_arithemric_expression_fluents!(expr.args[1], varslist, retset)

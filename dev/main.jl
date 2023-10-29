@@ -18,6 +18,7 @@ using Random, Logging
 using CxxWrap
 using PDDL
 using Z3
+using DataStructures
 
 
 include("../src/encodings/structs.jl")
@@ -27,6 +28,7 @@ include("../src/exts/z3ext.jl")
 
 include("../src/encodings/utils.jl")
 include("../src/encodings/linear.jl")
+include("../src/encodings/r2e.jl")
 
 include("../src/encodings/encoder.jl")
 
@@ -39,8 +41,8 @@ roverproblem = load_problem(IPCInstancesRepo, "ipc-2002-rovers-numeric-automatic
 # roverdomain  = load_domain("/home/ma342/Developer/BPlanning-Tests/TBD-Behaviour-Planning/planning-tasks/numeric-planning-tasks/ipc-2002/domains/depots-numeric-automatic/domain.pddl");
 # roverproblem = load_problem("/home/ma342/Developer/BPlanning-Tests/TBD-Behaviour-Planning/planning-tasks/numeric-planning-tasks/ipc-2002/domains/depots-numeric-automatic/instances/instance-2.pddl");
 
-
 _solutionformula = solve(LINEAR, roverdomain, roverproblem, 100, 60000);
+_solutionformula = solve(R2E, roverdomain, roverproblem, 100, 60000);
 _solutionformula.solved
 plan1, z3actins = extractplan(_solutionformula);
 @assert length(plan1) > 0

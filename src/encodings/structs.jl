@@ -12,7 +12,7 @@ end
 
 mutable struct Formulastep
     step::Int64
-    fluentsVars::Dict{Term, Z3.ExprAllocated}
+    fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}
     fluentsValues::Dict{Term, Any}
     actions::Dict{Term, ActionFormula}
     atmostConstraint::Union{Z3.ExprAllocated, Nothing}
@@ -33,15 +33,19 @@ mutable struct Formula
     formulatype::EncoderMode
 end
 
-function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated})
+function formulastep(step::Int64)
+    Formulastep(step, Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}(), Dict{Term, Z3.ExprAllocated}(), Dict{Term, ActionFormula}(), nothing, nothing)
+end
+
+function formulastep(step::Int64, fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}})
     Formulastep(step, fluentsVars, Dict{Term, Z3.ExprAllocated}(), Dict{Term, ActionFormula}(), nothing, nothing)
 end    
 
-function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, fluentsVals::Dict{Term, Z3.ExprAllocated})
+function formulastep(step::Int64, fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, fluentsVals::Dict{Term, Z3.ExprAllocated})
     Formulastep(step, fluentsVars, fluentsVals, Dict{Term, ActionFormula}(), nothing, nothing)
 end    
 
-function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, fluentsVals::Dict{Term, Z3.ExprAllocated}, actions::Dict{Term, ActionFormula})
+function formulastep(step::Int64, fluentsVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, fluentsVals::Dict{Term, Z3.ExprAllocated}, actions::Dict{Term, ActionFormula})
     Formulastep(step, fluentsVars, fluentsVals, actions, nothing, nothing)
 end    
 

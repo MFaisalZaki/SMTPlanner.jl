@@ -1,5 +1,13 @@
 
-function encodeGoalStatelinear!(goal::Compound, fluentVars::Dict{Term, Z3.ExprAllocated}, _ctx::Z3.ContextAllocated)
+function encodestatelinear!(step::Int, _f::Formula)
+    statefluentsvars = Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}()
+    for fluent in _f.fluents
+        statefluentsvars[fluent] = encodefluentvar(fluent, getfluentz3type(_f.domain, fluent), step, _f.z3Context)
+    end
+    return formulastep(step, statefluentsvars)
+end
+
+function encodeGoalStatelinear!(goal::Compound, fluentVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, _ctx::Z3.ContextAllocated)
     goalstate = Dict{Term, Z3.ExprAllocated}()
     for predicate in goal.args
         if predicate.name in (:+, :-, :*, :/, :<, :>, :<=, :>=, :(==), :!=)
@@ -17,7 +25,7 @@ function encodeactionlinear!(step::Int, action::GroundAction, _planformula::Form
     return ActionFormula(action, z3Type2VarFunction[:Bool](_planformula.z3Context, string(action, step)), pr, effs)
 end
 
-function encodepreconditionslinear!(action::GroundAction, fluentVars::Dict{Term, Z3.ExprAllocated}, _ctx::Z3.ContextAllocated)
+function encodepreconditionslinear!(action::GroundAction, fluentVars::Dict{Term, Union{Z3.ExprAllocated, Deque{Z3.ExprAllocated}}}, _ctx::Z3.ContextAllocated)
     precondZ3 = Dict{Term, Z3.ExprAllocated}()
     for precondition in action.preconds
         if precondition.name in (:+, :-, :*, :/, :<, :>, :<=, :>=, :(==), :!=)
@@ -100,7 +108,7 @@ function encodesteplinear!(step::Int64, _formula::Formula)
     @debug "Encoding step $(step+1)"
     @debug "Encoding actions"
     for action in _formula.groundedactions
-        append!(_formula, encodestate!(step+1, _formula.fluents, _formula.domain, _formula.z3Context));
+        append!(_formula, encodestatelinear!(step+1, _formula));
         _formula.step[step].actions[action.term] = encodeactionlinear!(step, action, _formula);
     end
     _formula.step[step].atmostConstraint = Z3.atmost(Z3.ExprVector(_formula.z3Context, [a.second.z3Var for a in _formula.step[step].actions]), 1)

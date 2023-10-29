@@ -145,7 +145,7 @@ function encodestep!(step::Int64, _formula::Formula)
     return z3goalstate
 end
 
-function solve(domain::Domain, problem::Problem, upperbound::Int, iterationtimeout::Union{Nothing,Int64} = nothing)
+function solvelinear(domain::Domain, problem::Problem, upperbound::Int, iterationtimeout::Union{Nothing,Int64} = nothing)
     state = initstate(domain, problem);
     fluents = groundfluents(domain, state);
     g_actions = groundActions(domain, state);
@@ -202,11 +202,11 @@ function solve!(step::Int64, _formula::Formula, goalstate::Union{Z3.ExprAllocate
     !isnothing(_formula.step[step].atmostConstraint) ? add(_formula.solver, _formula.step[step].atmostConstraint) : nothing
 
     # Add goal state
-    push(_formula.solver)
+    push!(_formula)
     isnothing(goalstate) ? nothing : add(_formula.solver, goalstate)
     isnothing(timeout) ? nothing : set(_formula.solver, "timeout", convert(UInt, timeout))
     res = check(_formula.solver) 
-    res == Z3.unsat ? (pop(_formula.solver,1)) : nothing
+    res == Z3.unsat ? (pop!(_formula)) : nothing
     return res
 end
 

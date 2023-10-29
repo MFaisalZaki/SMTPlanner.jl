@@ -25,6 +25,7 @@ mutable struct Formula
     solver::Union{Z3.SolverAllocated, Nothing}
     fluents::Vector{Term}
     solved::Bool
+    solverpushcnt::Int64
 end
 
 function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated})
@@ -40,6 +41,6 @@ function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, flu
 end    
 
 function formula(domain::Domain, problem::Problem, state::GenericState, gactions::Vector{GroundAction}, _fluents::Vector{Term}, _ctx::Z3.ContextAllocated)
-    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing, _fluents, false)
+    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing, _fluents, false, 0)
 end
 

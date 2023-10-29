@@ -26,7 +26,7 @@ include("encodings/linear.jl")
 include("encodings/r2e.jl")
 include("encodings/encoder.jl")
 
-export Formulastep, Formula, formulastep, formula
+export Formulastep, Formula, EncoderMode, formulastep, formula
 
 export solve, solve!, extractplan
 

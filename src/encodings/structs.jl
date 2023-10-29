@@ -1,3 +1,7 @@
+@enum EncoderMode begin
+    LINEAR = 1
+    R2E = 2
+end
 
 struct ActionFormula
     name::Compound
@@ -26,6 +30,7 @@ mutable struct Formula
     fluents::Vector{Term}
     solved::Bool
     solverpushcnt::Int64
+    formulatype::EncoderMode
 end
 
 function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated})
@@ -40,7 +45,7 @@ function formulastep(step::Int64, fluentsVars::Dict{Term, Z3.ExprAllocated}, flu
     Formulastep(step, fluentsVars, fluentsVals, actions, nothing, nothing)
 end    
 
-function formula(domain::Domain, problem::Problem, state::GenericState, gactions::Vector{GroundAction}, _fluents::Vector{Term}, _ctx::Z3.ContextAllocated)
-    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing, _fluents, false, 0)
+function formula(domain::Domain, problem::Problem, state::GenericState, gactions::Vector{GroundAction}, _fluents::Vector{Term}, _ctx::Z3.ContextAllocated, _type::EncoderMode)
+    Formula(domain, problem, state, gactions, _ctx, Dict{Int64, Formulastep}(), nothing, _fluents, false, 0, _type)
 end
 

@@ -40,7 +40,7 @@ roverproblem = load_problem(IPCInstancesRepo, "ipc-2002-rovers-numeric-automatic
 # roverproblem = load_problem("/home/ma342/Developer/BPlanning-Tests/TBD-Behaviour-Planning/planning-tasks/numeric-planning-tasks/ipc-2002/domains/depots-numeric-automatic/instances/instance-2.pddl");
 
 
-_solutionformula = solve(linear, roverdomain, roverproblem, 100, 60000);
+_solutionformula = solve(LINEAR, roverdomain, roverproblem, 100, 60000);
 _solutionformula.solved
 plan1, z3actins = extractplan(_solutionformula);
 @assert length(plan1) > 0

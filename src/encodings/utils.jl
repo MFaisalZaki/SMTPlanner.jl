@@ -226,7 +226,11 @@ function extractplan(planformula::Formula)
     z3actions = Z3.ExprAllocated[]
     for step in 0:length(planformula)
         _formula_at_step = planformula.step[step];
-        for (action, z3action) in _formula_at_step.actions
+        actionlist = nothing
+        actionlist = isnothing(actionlist) && planformula.formulatype == LINEAR ? _formula_at_step.actions : nothing
+        actionlist = isnothing(actionlist) && planformula.formulatype == R2E ?    _formula_at_step.actions : actionlist
+        @assert !isnothing(actionlist) "Unknown formula type"
+        for (action, z3action) in actionlist
             if Z3.is_true(Z3.eval(model, z3action.z3Var))
                 push!(plan, action)
                 push!(z3actions, z3action.z3Var)

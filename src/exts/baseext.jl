@@ -63,3 +63,6 @@ function Base.pop!(f::Formula)
     pop(f.solver, 1)
 end
 
+function Base.sort(actionlist::Dict{Term, ActionFormula})
+    return sort(collect(actionlist), by = x -> x.first.name)
+end
